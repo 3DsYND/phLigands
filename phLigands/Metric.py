@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.optimize import fmin_cobyla
+
 
 class Metric:
     extremum = min
@@ -82,6 +84,37 @@ class Dist2(Metric):
         if return_array:
             return dists, aim_points
         return sum(dists)
+
+class Dist2cobyla(Dist2):
+    def aim_point(self, model, params, dataX, dataY, delta=0.001, return_dist=False, **kwargs):
+        dist2 = list()
+        aim_points = list()
+        for index, row in np.ndenumerate(dataX):
+            p = (dataX[index], dataY[index])
+            funct = lambda x: model.eval(params, x)
+            obj = lambda X: self.evaldist2(model, params, p[0], X[0], p[1], X[1])
+            def c1(X):
+                x,y = X
+                return funct(x) - y
+            p0 = (dataX[index], funct(dataX[index]))
+            X = fmin_cobyla(obj, x0=p0, cons=[c1])
+#             print(X)
+            aim_points.append(X[0])
+            if return_dist: dist2.append(obj(X))
+        print(aim_points)
+        if return_dist: 
+            return dist2, aim_points
+        return aim_points
+    
+    
+    def evaldist2(self, model, params, dataX, dataX_true, dataY, dataY_true, weightsX=None, weightsY=None):
+        if weightsX and weightsY:
+            return self.dist2(dataX, dataX_true) * weightsX + self.dist2(dataY, dataY_true) * weightsY
+        if weightsX:
+            return self.dist2(dataX, dataX_true) * weightsX + self.dist2(dataY, dataY_true)
+        if weightsY:
+            return self.dist2(dataX, dataX_true) + self.dist2(dataY, dataY_true) * weightsY
+        return self.dist2(dataX, dataX_true) + self.dist2(dataY, dataY_true)
     
     
 class Diff2(Dist2):

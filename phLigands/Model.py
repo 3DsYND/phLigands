@@ -1,6 +1,9 @@
 import numpy as np
+from scipy.optimize import root_scalar
+
 
 class Model:
+    consts = None
     params = None
     defparams = None
     
@@ -40,13 +43,13 @@ class Model:
     def _eval_function(self, function, params, dataX, **kwargs):
         ### Fix this isinstance
         if isinstance(dataX, np.float):
-            return function(dataX, **params)
+            return function(dataX, **self.consts, **params)
         dataX = np.asarray(dataX)
         dataY = np.empty(dataX.shape[0])
         dataY[:] = np.nan
         for i, pointX in np.ndenumerate(dataX):
-            a = function(pointX, **params)
-            print(a)
+            a = function(pointX, **self.consts, **params)
+#             print(a)
             dataY[i] = a
         return dataY   
     
@@ -62,6 +65,8 @@ class LinReg(Model):
 
 
 class ScatchardN(Model):
+    consts = {}
+    
     def setDefParams(self):
         defparams = dict()
         defparams["A_b"] = {"min" : 150, "def" : 191.8, "max" : 210}
@@ -80,3 +85,24 @@ class ScatchardN(Model):
             return np.nan
         tmp = 1 / (k * A_b) + n + x
         return A_b * (1 - (2 * tmp - 4 * n) / (2 * np.sqrt(tmp**2 - 4 * n * x)))/ (2 * n)
+    
+    
+class MGvH(Model):
+    consts = {"c": 41, "Af": 0}
+    
+    def setDefParams(self):
+        defparams = dict()
+        defparams["Ab"] = {"min" : 170, "def" : 191.8, "max" : 210}
+        defparams["k"] = {"min" : 0.001, "def" : 0.02, "max" : 1}
+        defparams["n"] = {"min" : 0.001, "def" : 3.6, "max" : 7}
+        return defparams
+    
+    def function(self, PD, c, Af, Ab, k, n):
+        N = c * PD
+        mgvh = lambda cb: cb - k * (c - cb) * (N - n * cb) * ((N - n * cb)/(N - (n-1) * cb))**(n-1)
+        cb = root_scalar(mgvh, bracket=(0, min([c, N/n])), method='brentq').root
+        return (c - cb)/c * Af + cb/c * Ab
+    
+    def derivative(self, PD, c, Af, Ab, k, n):
+        step = 0.001
+        return (self.function(PD + step/2, c, Af, Ab, k, n) - self.function(PD - step / 2, c, Af, Ab, k, n)) / step

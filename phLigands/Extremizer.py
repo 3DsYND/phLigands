@@ -25,16 +25,16 @@ class CoordEx(Extremizer):
     pass
 
 
-class FakeGrad(Extremizer):
-    def diff(self, func, x, deltadiff):
-        return (func(x-deltadiff/2) - func(x+deltadiff/2))/deltadiff
+# class FakeGrad(Extremizer):
+#     def diff(self, func, x, deltadiff):
+#         return (func(x-deltadiff/2) - func(x+deltadiff/2))/deltadiff
     
-    def extremum(self, metric, model, start, field, dataX, dataY, alpha=0.01, delta=0.1, deltadiff=0.001):
-        x_prev = start
-        x = x_prev.copy()
-        while(True):
-            for param in start.keys():
-                x[key] = x[key] - alpha * diff(metric.score(model, dataX, dataY))
-            if np.abs(x_prev - x) < delta:
-                return x
-            x_prev = x
+#     def extremum(self, metric, model, start, field, dataX, dataY, alpha=0.01, delta=0.1, deltadiff=0.001):
+#         x_prev = start
+#         x = x_prev.copy()
+#         while(True):
+#             for param in start.keys():
+#                 x[key] = x[key] - alpha * diff(metric.score(model, dataX, dataY))
+#             if np.abs(x_prev - x) < delta:
+#                 return x
+#             x_prev = x
