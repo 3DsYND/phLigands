@@ -1,9 +1,12 @@
+import logging
+
 import numpy as np
 from scipy.optimize import fmin_cobyla
 
 
 class Metric:
     extremum = min
+    logger = logging.getLogger("Metric")
     
     def dist2(self, data, data_true, **kwargs):
         return (data - data_true)**2
@@ -93,15 +96,15 @@ class Dist2cobyla(Dist2):
             p = (dataX[index], dataY[index])
             funct = lambda x: model.eval(params, x)
             obj = lambda X: self.evaldist2(model, params, p[0], X[0], p[1], X[1])
+            greater_coeff = 1 if dataY[index] - funct(dataX[index]) > 0 else -1 
             def c1(X):
                 x,y = X
-                return funct(x) - y
+                return greater_coeff * (y - funct(x))
             p0 = (dataX[index], funct(dataX[index]))
             X = fmin_cobyla(obj, x0=p0, cons=[c1])
-#             print(X)
             aim_points.append(X[0])
             if return_dist: dist2.append(obj(X))
-        print(aim_points)
+        self.logger.debug(f"Aim: {aim_points}")
         if return_dist: 
             return dist2, aim_points
         return aim_points

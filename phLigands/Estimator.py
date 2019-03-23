@@ -9,28 +9,17 @@ class Estimator:
     metric = None
     extremizer = None
     
-    def __init__(self, extremizer=None, metric=None, model=None, defparams=None):
-        if extremizer: self.setExtremizer(extremizer)
-        if metric: self.setMetric(metric)
-        if model: self.setModel(model)
-    
-    def setExtremizer(self, extremizer):
+    def __init__(self, extremizer=None, metric=None, model=None):
         self.extremizer = extremizer
-    
-    def setMetric(self, metric):
         self.metric = metric
-    
-    def setModel(self, model):
         self.model = model
     
     def fit(self, dataX, dataY):
         self.dataX = dataX
         self.dataY = dataY
         
-    def bestParams(self):            
-        start = self.model.getDefParams()
-        field = self.model.getDefField()
-        self.params = self.extremizer.extremum(self.metric, self.model, start, field, self.dataX, self.dataY)
+    def bestParams(self, def_params, var_params):
+        self.params = self.extremizer.extremum(self.metric, self.model, self.dataX, self.dataY, def_params, var_params)
         return self.params
     
     def score(self, params=None, is_array=False):
@@ -39,7 +28,7 @@ class Estimator:
         return self.metric.score(self.model, params, self.dataX, self.dataY, is_array)
 
     def desmos(self):
-        print(f"A(x, {self.params['A_b']}, {self.params['n']}, {self.params['k']})")
+        print(f"A(x, {self.params['Ab']}, {self.params['n']}, {self.params['k']})")
     
     def plotAB(self, A, B, rangeA=None, rangeB=None, dlt=0.5, log=None, **kwargs):
         linA, linB = self.model.getField(A, rangeA, dlt=dlt), self.model.getField(B, rangeB, dlt=dlt)
