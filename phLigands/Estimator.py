@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
 class Estimator:
+    params = None
     dataX = None
     dataY = None
     model = None
@@ -30,22 +31,35 @@ class Estimator:
     def desmos(self):
         print(f"A(x, {self.params['Ab']}, {self.params['n']}, {self.params['k']})")
     
-    def plotAB(self, A, B, rangeA=None, rangeB=None, dlt=0.5, log=None, **kwargs):
-        linA, linB = self.model.getField(A, rangeA, dlt=dlt), self.model.getField(B, rangeB, dlt=dlt)
-        meshA, meshB = np.meshgrid(linA, linB)
+    def plotAB(self, var_params, params=None, iters=100, log=None, **kwargs):
+        if not params: params = self.params
+        if len(var_params.keys()) != 2:
+            self.logger.warning("plotAB must have 2 variable parametrs")
+            return None
+        A, B = var_params.keys()
+        
+        lin = [np.linspace(interval[0], interval[1], iters) for param, interval in var_params.items()]
+        meshA, meshB = np.meshgrid(lin[0], lin[1])
         res = np.array(meshA)
         res[:] = np.nan
         
         for index, x in np.ndenumerate(res):
-            params = self.params.copy()
-            params[A], params[B] = meshA[index], meshB[index]
-            res[index] = self.metric.score(self.model, params, self.dataX, self.dataY)
+            params_field = params.copy()
+            params_field[A], params_field[B] = meshA[index], meshB[index]
+            res[index] = self.metric.score(self.model, params_field, self.dataX, self.dataY)
         
+        minA, minB = meshA[np.where(res == res.min())], meshB[np.where(res == res.min())]
         lognorm = LogNorm() if log else None
         plt.figure(figsize=(10,10))
-        plt.imshow(res, extent=[linA[0], linA[-1], linB[-1], linB[0]], norm=lognorm, **kwargs)
-        plt.scatter(meshA[np.where(res == res.min())], meshB[np.where(res == res.min())], color="red")
+        if not "aspect" in kwargs: kwargs["aspect"] = (var_params[A][1] - var_params[A][0]) / (var_params[B][1] - var_params[B][0]) / 3
+        plt.imshow(res, extent=[lin[0][0], lin[0][-1], lin[1][-1], lin[1][0]], norm=lognorm, **kwargs)
+        plt.scatter(minA, minB, color="red")
         plt.show()
+        
+        params_field = params.copy()
+        params_field[A], params_field[B] = minA, minB
+        print(f"Real minimum: {{\"{A}\": {round(minA[0], 3)}, \"{B}\": {round(minB[0], 3)}}}, Score: {round(self.metric.score(self.model, params_field, self.dataX, self.dataY), 2)}")
+        
         return res
     
     def plot(self, params=None, iter=20):
@@ -53,7 +67,6 @@ class Estimator:
         plt.figure(figsize=(10,5))
         plt.scatter(self.dataX, self.dataY)
         xgr = np.linspace(self.dataX.min(), self.dataX.max(), iter)
-        print("ASD", params)
         ygr = self.model.eval(params, xgr)
         plt.plot(xgr, ygr)
         plt.show()

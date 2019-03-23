@@ -37,12 +37,12 @@ class Gradient():
     max_iterations = 1000
     logger = logging.getLogger("Extremizer")
     
-    def __init__(self, alpha=0.0005, precision=0.005):
-        self.alpha = alpha
+    def __init__(self, alpha=1, precision=0.005):
+        self.alpha = alpha * 0.01
         self.precision = precision
         
     def _grad_dict(self, metric, model, dataX, dataY, def_params, var_params):
-        step = 0.001
+        step = 0.00001
         grad = var_params.copy()
         for param in var_params:
             params_m = def_params.copy()
@@ -50,22 +50,29 @@ class Gradient():
             params_p = def_params.copy()
             params_p[param] += step / 2
             
-            par_diff = (metric.score(model, params_m, dataX, dataY) - metric.score(model, params_p, dataX, dataY)) / step
+            par_diff = (metric.score(model, params_p, dataX, dataY) - metric.score(model, params_m, dataX, dataY)) / step
             grad[param] = par_diff
+        self.logger.debug(f"Gradient: {grad}")
         return grad
         
     def extremum(self, metric, model, dataX, dataY, def_params, var_params):
         iteration = 0
         prev_params = def_params
+        grad_zero = self._grad_dict(metric, model, dataX, dataY, def_params, var_params)
         while True:
-            dlt = 0
+            dlt = list()
+            ### debug
+            steps = list()
             params = prev_params.copy()
-            grad = self._grad_dict(metric, model, dataX, dataY, def_params, var_params)
+            grad = self._grad_dict(metric, model, dataX, dataY, params, var_params)
             for param in grad:
-                params[param] -= self.alpha * grad[param]
-                dlt += abs(params[param] - prev_params[param])
-            self.logger.debug(f"Iter: {params}")
-            if (dlt / len(var_params.keys())) < self.precision or iteration > self.max_iterations:
+                grad_step = self.alpha * grad[param] * (var_params[param][1] - var_params[param][0]) / abs(grad_zero[param])
+                steps.append(grad_step)
+                params[param] -= grad_step
+                dlt.append(abs(params[param] - prev_params[param]))
+            self.logger.debug(f"Iter {iteration}: {params} Score: {metric.score(model, params, dataX, dataY)}")
+            self.logger.debug(f"Step: {steps}")
+            if max(dlt) < self.precision or iteration > self.max_iterations:
                 return params
             prev_params = params
             iteration += 1
