@@ -38,7 +38,7 @@ class Gradient():
     logger = logging.getLogger("Extremizer")
     
     def __init__(self, alpha=1, precision=0.005):
-        self.alpha = alpha * 0.01
+        self.alpha = alpha * 0.02
         self.precision = precision
         
     def _grad_dict(self, metric, model, dataX, dataY, def_params, var_params):
@@ -52,28 +52,33 @@ class Gradient():
             
             par_diff = (metric.score(model, params_p, dataX, dataY) - metric.score(model, params_m, dataX, dataY)) / step
             grad[param] = par_diff
-        self.logger.debug(f"Gradient: {grad}")
         return grad
         
-    def extremum(self, metric, model, dataX, dataY, def_params, var_params):
+    def extremum(self, metric, model, dataX, dataY, def_params, var_params, debug=False):
+        params_arr = list()
         iteration = 0
         prev_params = def_params
         grad_zero = self._grad_dict(metric, model, dataX, dataY, def_params, var_params)
         while True:
             dlt = list()
-            ### debug
-            steps = list()
             params = prev_params.copy()
             grad = self._grad_dict(metric, model, dataX, dataY, params, var_params)
             for param in grad:
+                ## * (var_params[param][1] - var_params[param][0]) / abs(grad_zero[param])
                 grad_step = self.alpha * grad[param] * (var_params[param][1] - var_params[param][0]) / abs(grad_zero[param])
-                steps.append(grad_step)
                 params[param] -= grad_step
                 dlt.append(abs(params[param] - prev_params[param]))
-            self.logger.debug(f"Iter {iteration}: {params} Score: {metric.score(model, params, dataX, dataY)}")
-            self.logger.debug(f"Step: {steps}")
-            if max(dlt) < self.precision or iteration > self.max_iterations:
-                return params
             prev_params = params
+            if debug: params_arr.append(params)
             iteration += 1
+            
+            if max(dlt) < self.precision or iteration > self.max_iterations:
+                if debug:
+                    ret = dict()
+                    ret["params"] = params
+                    ret["iterations"] = iteration
+                    ret["params_arr"] = params_arr
+                    return ret
+                else:
+                    return params
             
