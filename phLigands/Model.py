@@ -56,3 +56,28 @@ class MGvH(Model):
     def _derivative(self, PD, c, Af, Ab, k, n):
         step = 0.001
         return (self._function(PD + step/2, c, Af, Ab, k, n) - self._function(PD - step / 2, c, Af, Ab, k, n)) / step
+    
+## I stole it
+class MGvH1900(Model):    
+    def _function(self, PD, c, Af, Ab, k, n):
+        precision = 1e-4
+        N = c * PD
+        mgvh = lambda cb: k*(c-cb)*(N-cb*n)*((N-cb*n)/(N-cb*(n-1)))**(n-1)-cb;
+        if (n<=0)or(k<=0): return 0
+        if n<=1:
+            return 0.5*(1/k+c+N/n-np.sqrt((1/k+c+N/n)**2-4*c*N/n))
+        _n = 0;
+        _r = min(c,N/n);
+        cb = (_n + _r)/2;
+        while (_r - _n > precision) and (abs(mgvh(cb)) > precision ):
+            if(mgvh(cb) * mgvh(_n) <= 0):
+                _r = cb
+            else :
+                _n = cb
+            cb = (_n + _r) / 2;
+        
+        return (c - cb)/c * Af + cb/c * Ab
+    
+    def _derivative(self, PD, c, Af, Ab, k, n):
+        step = 0.001
+        return (self._function(PD + step/2, c, Af, Ab, k, n) - self._function(PD - step / 2, c, Af, Ab, k, n)) / step
